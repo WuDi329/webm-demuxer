@@ -308,6 +308,7 @@ onmessage = function (e) {
 
             //主线程发送start时，这里被触发
         case 'start': {
+            //第2步：收到start的响应
             console.log('webme-worker: case start is triggered')
             metadata = msg.webm_metadata;
             options = {
@@ -333,12 +334,16 @@ onmessage = function (e) {
                 switch (msg2.type) {
                     //main thread msg:type=start
                     case 'ready':
+                        //第三步：webm_worker监听到webm_muxer发送的ready消息
                         console.log('webm-worker: case ready is triggered')
+                        //第四步：webm_worker将主线程的msg发送回去，msg的type为start
+                        console.log(msg)
                         webm_muxer.postMessage(msg);
                         break;
 
                     //send data to webm-muxer msg:stream-data
                     case 'start-stream':
+
                         console.log('webm-worker: case start-stream is triggered')
                         send_metadata(metadata);
                         break;

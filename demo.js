@@ -329,6 +329,7 @@ start_el.addEventListener('click', async function () {
         }
     }
 
+    //第一步：调用start
     function start() {
         webm_worker.postMessage({
             type: 'start',
