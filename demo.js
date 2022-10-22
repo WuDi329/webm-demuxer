@@ -159,13 +159,14 @@ start_el.addEventListener('click', async function () {
             case 'error':
                 onerror(msg.detail)
                 break;
-
+                //当接收到第二个'exit'之后，转发给webm_worker，告诉它over了
             case 'exit':
                 if (++num_exits === 2) {
                     webm_worker.postMessage({ type: 'end' });
                 }
                 break;
 
+                //当接收到audio-data或者video-data之后，转发给webm_worker
             default:
                 webm_worker.postMessage(msg, [msg.data]);
                 break;
@@ -227,8 +228,10 @@ start_el.addEventListener('click', async function () {
                 break;
 
             case 'start-stream':
+                //第八步：主线程接受到webm_worker的start stream信号
                 console.log('demo: start stream')
                 //under start-stream ,main thread post message to video_worker&audio_worker
+                //第九步：主线程发送start信息给video_worker和audio_worker
                 video_worker.postMessage({
                     type: 'start',
                     readable: video_readable,

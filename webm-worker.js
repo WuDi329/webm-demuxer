@@ -261,14 +261,16 @@ function send_metadata(metadata) {
         send_data(seek_pre_roll);
     }
 
+    //第七步：webm_worker发送start-stream给webm_muxer
     self.postMessage({type: 'start-stream'});
 }
 
 onmessage = function (e) {
     const msg = e.data;
     switch (msg.type) {
-        case ' ':
-            console.log('webme-worker: case empty is triggered')
+        case 'video-data':
+            ////接收到主线程转发的audio-data之后，对他进行进一步处理
+            console.log('webme-worker: case video-data is triggered')
             if (metadata.video) {
                 if (first_video_timestamp === null) {
                     first_video_timestamp = msg.timestamp;
@@ -279,6 +281,7 @@ onmessage = function (e) {
             }
             break;
 
+            //接收到主线程转发的audio-data之后，对他进行进一步处理
         case 'audio-data':
             console.log('webme-worker: case audio-data is triggered')
             if (metadata.audio) {

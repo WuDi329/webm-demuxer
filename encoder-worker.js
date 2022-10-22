@@ -30,7 +30,9 @@ onmessage = async function (e) {
 
                 let encoder;
                 if (msg.config.codec !== 'pcm') {
+                    //在非pcm的环境下，创建encoder
                     encoder = new Encoder({
+                        //encoder的后续操作：encode出的编码块发送给主线程，type是具体的audio-data或者video-data
                         output: chunk => {
                             const data = new ArrayBuffer(chunk.byteLength);
                             chunk.copyTo(data);
@@ -44,9 +46,11 @@ onmessage = async function (e) {
                         },
                         error: onerror
                     });
+                    //encoder调用configure方法进行配置
                     await encoder.configure(msg.config);
                 }
 
+                //msg是什么类型的？
                 const reader = msg.readable.getReader();
                 let last_key_frame = -1;
                 let frame_count = 0;
@@ -57,6 +61,7 @@ onmessage = async function (e) {
                         if (encoder) {
                             await encoder.flush();
                         }
+                        //如果当前encoder编码完成，给主线程发送消息exit
                         self.postMessage({ type: 'exit' });
                         break;
                     }
@@ -64,6 +69,7 @@ onmessage = async function (e) {
                     if (msg.audio) {
                         if (encoder) {
                             encoder.encode(result.value);
+                            //似乎是只支持f32-planar
                         } else if (result.value.format !== 'f32-planar') {
                             throw new Error(`unexpected audio format: ${result.value.format}`);
                         } else {
@@ -85,6 +91,7 @@ onmessage = async function (e) {
                                 const d = i / 4;
                                 buf.set(new Uint8Array(bufs[Math.floor(d) % nc], Math.floor(d / nc) * 4, 4), i);
                             }
+                            //第十步：发送给主线程音频信息
                             self.postMessage({
                                 type,
                                 timestamp: result.value.timestamp,
