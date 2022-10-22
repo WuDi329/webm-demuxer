@@ -166,7 +166,7 @@ start_el.addEventListener('click', async function () {
                 }
                 break;
 
-                //当接收到audio-data或者video-data之后，转发给webm_worker
+                //第11步：当接收到audio-data或者video-data之后，转发给webm_worker
             default:
                 webm_worker.postMessage(msg, [msg.data]);
                 break;
@@ -244,6 +244,7 @@ start_el.addEventListener('click', async function () {
                     audio: true,
                     readable: audio_readable,
                     config: {
+                        //只有codec是audio才有可能有pcm的标志
                         codec: pcm_el.checked ? 'pcm' : 'opus',
                         bitrate: 128 * 1000,
                         sampleRate: audio_settings.sampleRate,

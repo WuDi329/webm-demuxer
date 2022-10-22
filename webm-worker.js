@@ -33,9 +33,10 @@ let queued_video = [];
 let queued_audio = [];
 let num_timestamp_mismatch_warnings = 0;
 
+//第六步，webm_worker发送stream-data给webm_muxer
 function send_data(data) {
-    //第六步，webm_worker发送stream-data给webm_muxer
-    console.log('webm_worker: 发送stream-data给webm-muxer')
+    
+    // console.log('webm_worker: 发送stream-data给webm-muxer')
     webm_muxer.postMessage({
         type: 'stream-data',
         data
@@ -63,10 +64,13 @@ function send_msg(msg) {
 
     const duration = new ArrayBuffer(8);
     new DataView(duration).setBigUint64(0, BigInt(msg.duration || 0), true);
-
+        console.log('send header to webm_muxer')
     send_data(header);
+    console.log('send timestamp to webm_muxer')
     send_data(timestamp);
+    console.log('send duration to webm_muxer')
     send_data(duration);
+    console.log('send msg.data to webm_muxer')
     send_data(msg.data);
 }
 
@@ -106,9 +110,12 @@ function set_audio_ts(amsg, atimestamp) {
     return amsg;
 }
 
+//send_msgs调用以上所有的方法
 function send_msgs(opts) {
+    //如果metadata.video是空，调用
     if (!metadata.video) {
         while (queued_audio.length > 0) {
+            //将queued_audio的前几位全部发送出去
             send_msg(queued_audio.shift());
         }
         return;
@@ -116,15 +123,19 @@ function send_msgs(opts) {
 
     if (!metadata.audio) {
         while (queued_video.length > 0) {
+            //将queued_video的前几位全部发送出去
             send_msg(queued_video.shift());
         }
         return;
     }
 
+    //当这两个queue里有东西的时候执行
     while ((queued_video.length > 0) && (queued_audio.length > 0)) {
+        //分别获取video和audip的timestamp（时间戳
         const vtimestamp = get_video_ts(queued_video[0]);
         const atimestamp = get_audio_ts(queued_audio[0]);
 
+        //根据video和audio的顺序决定先发谁
         if (vtimestamp < atimestamp) {
             send_msg(set_video_ts(queued_video.shift(), vtimestamp));
         } else {
@@ -132,6 +143,7 @@ function send_msgs(opts) {
         }
     }
 
+    //当有一边彻底清0，并且queued_video.length > opts.video_queue_limit
     while (queued_video.length > opts.video_queue_limit) {
         const msg = queued_video.shift();
         const vtimestamp = get_video_ts(msg);
@@ -150,6 +162,7 @@ function send_msgs(opts) {
     }
 }
 
+//第五步的下属步骤：从metadata中提取信息发送给webm_muxer
 function send_metadata(metadata) {
     const max_cluster_duration = new ArrayBuffer(8);
     new DataView(max_cluster_duration).setBigUint64(0, metadata.max_cluster_duration || BigInt(0), true);;
@@ -269,8 +282,9 @@ onmessage = function (e) {
     const msg = e.data;
     switch (msg.type) {
         case 'video-data':
-            ////接收到主线程转发的audio-data之后，对他进行进一步处理
+            ////第12步：接收到主线程转发的audio-data之后，对他进行进一步处理
             console.log('webme-worker: case video-data is triggered')
+            //如果metadata已经存在
             if (metadata.video) {
                 if (first_video_timestamp === null) {
                     first_video_timestamp = msg.timestamp;
@@ -281,7 +295,7 @@ onmessage = function (e) {
             }
             break;
 
-            //接收到主线程转发的audio-data之后，对他进行进一步处理
+            //第12步：接收到主线程转发的audio-data之后，对他进行进一步处理
         case 'audio-data':
             console.log('webme-worker: case audio-data is triggered')
             if (metadata.audio) {
@@ -315,6 +329,7 @@ onmessage = function (e) {
         case 'start': {
             //第2步：收到start的响应
             console.log('webme-worker: case start is triggered')
+            //metadata来自于主线程的webm_meatadata
             metadata = msg.webm_metadata;
             options = {
                 video_queue_limit: Infinity,
@@ -361,8 +376,11 @@ onmessage = function (e) {
                         break;
 
                     ///forward the message about muxed-data
+
+                    //很多步之后，获得了muxed-data
                     case 'muxed-data':
                         console.log('webm-worker: case muxed-data is triggered')
+                        //将muxed-data发送给主线程
                         self.postMessage(msg2, [msg2.data]);
                         break;
 

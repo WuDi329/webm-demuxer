@@ -29,6 +29,7 @@ onmessage = async function (e) {
                 }
 
                 let encoder;
+                //video或者opus
                 if (msg.config.codec !== 'pcm') {
                     //在非pcm的环境下，创建encoder
                     encoder = new Encoder({
@@ -59,6 +60,7 @@ onmessage = async function (e) {
                     const result = await reader.read();
                     if (result.done) {
                         if (encoder) {
+                            
                             await encoder.flush();
                         }
                         //如果当前encoder编码完成，给主线程发送消息exit
@@ -68,11 +70,13 @@ onmessage = async function (e) {
                     //if msg.audio is true then ,msg.video is false
                     if (msg.audio) {
                         if (encoder) {
+                            //第十步，直接进行ecode（对于非pcm的音频）
                             encoder.encode(result.value);
                             //似乎是只支持f32-planar
                         } else if (result.value.format !== 'f32-planar') {
                             throw new Error(`unexpected audio format: ${result.value.format}`);
                         } else {
+                            //是pcm而且format === f32-planner要在这里经过一个格式转换的过程
                             // Convert from planar to interleaved
                             const nc = result.value.numberOfChannels;
                             let total_size = 0;
@@ -111,6 +115,7 @@ onmessage = async function (e) {
                                 last_key_frame = result.value.timestamp;
                             }
                         }
+                        //进行decode（对于视频）
                         encoder.encode(result.value, { keyFrame });
                     }
                     result.value.close();
