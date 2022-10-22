@@ -34,6 +34,8 @@ let queued_audio = [];
 let num_timestamp_mismatch_warnings = 0;
 
 function send_data(data) {
+    //第六步，webm_worker发送stream-data给webm_muxer
+    console.log('webm_worker: 发送stream-data给webm-muxer')
     webm_muxer.postMessage({
         type: 'stream-data',
         data
@@ -336,14 +338,14 @@ onmessage = function (e) {
                     case 'ready':
                         //第三步：webm_worker监听到webm_muxer发送的ready消息
                         console.log('webm-worker: case ready is triggered')
-                        //第四步：webm_worker将主线程的msg发送回去，msg的type为start
+                        //第四步：webm_worker将主线程的msg发送给webm_muxer，msg的type为start
                         console.log(msg)
                         webm_muxer.postMessage(msg);
                         break;
 
                     //send data to webm-muxer msg:stream-data
                     case 'start-stream':
-
+                        //第五步：webm_worker监听到webm_muxer发送的start-stream
                         console.log('webm-worker: case start-stream is triggered')
                         send_metadata(metadata);
                         break;
