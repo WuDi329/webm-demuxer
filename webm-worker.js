@@ -333,27 +333,32 @@ onmessage = function (e) {
                 switch (msg2.type) {
                     //main thread msg:type=start
                     case 'ready':
+                        console.log('webm-worker: case ready is triggered')
                         webm_muxer.postMessage(msg);
                         break;
 
                     //send data to webm-muxer msg:stream-data
                     case 'start-stream':
+                        console.log('webm-worker: case start-stream is triggered')
                         send_metadata(metadata);
                         break;
 
                     //forward the message about exit
                     case 'exit':
+                        console.log('webm-worker: case exit is triggered')
                         webm_muxer.terminate();
                         self.postMessage(msg2);
                         break;
 
                     ///forward the message about muxed-data
                     case 'muxed-data':
+                        console.log('webm-worker: case muxed-data is triggered')
                         self.postMessage(msg2, [msg2.data]);
                         break;
 
                     ///forward the message about stats
                     case 'stats':
+                        console.log('webm-worker: case stats is triggered')
                         self.postMessage(msg2);
                         break;
                     //?
