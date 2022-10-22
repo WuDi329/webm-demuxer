@@ -1,0 +1,25 @@
+<html>
+    <head>
+        <title>WebM muxer demo</title>
+        <script type="module" src="demo.js"></script>
+        <script src="EBML.js"></script>
+    </head>
+    <body>
+        <input type="button" id="start" value="Start">
+        <input type="button" id="stop" value="Stop" disabled>
+        <label for="record">Record</label>
+        <input type="checkbox" id="record" value="Record" autocomplete="off">
+        <label for="pcm">PCM</label>
+        <input type="checkbox" id="pcm" value="PCM" autocomplete="off">
+        <label for="in-memory">In-memory</label>
+        <input type="checkbox" id="in-memory" value="In-memory" autocomplete="off">
+        <select id="codec">
+            <option value="vp09">VP9</option>
+            <option value="av01">AV1</option>
+        </select>
+        <input type="hidden" id="chroma">
+        <span id="buf_info"></span>
+        <span id="rec_info"></span>
+        <video width="100%" id="video" muted poster="data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot;/>"></video>
+    </body>
+</html>

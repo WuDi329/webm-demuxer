@@ -1,0 +1,117 @@
+function onerror(e) {
+    console.error(e);
+    self.postMessage({
+        type: 'error',
+        detail: e.message
+    });
+}
+
+onmessage = async function (e) {
+    const msg = e.data;
+    switch (msg.type) {
+        case 'start':
+            try {
+                const Encoder = msg.audio ? AudioEncoder : VideoEncoder;
+                const type = msg.audio ? 'audio-data' : 'video-data';
+
+                let key_frame_interval = msg.audio ? 0 : msg.key_frame_interval;
+                if (key_frame_interval > 0) {
+                    // Use frame count rather than timestamp to determine key frame.
+                    if (msg.count_frames) {
+                        //以每秒帧数为单位的预期帧速率（如果已知）。
+                        if (!msg.config.framerate) {
+                            throw new Error('framerate not configured');
+                        }
+                    } else {
+                        //How often to generate a key frame, in seconds. Use 0 for no key frames.
+                        key_frame_interval *= 1000000;
+                    }
+                }
+
+                let encoder;
+                if (msg.config.codec !== 'pcm') {
+                    encoder = new Encoder({
+                        output: chunk => {
+                            const data = new ArrayBuffer(chunk.byteLength);
+                            chunk.copyTo(data);
+                            self.postMessage({
+                                type,
+                                timestamp: chunk.timestamp,
+                                duration: chunk.duration,
+                                is_key: msg.audio || chunk.type === 'key',
+                                data
+                            }, [data]);
+                        },
+                        error: onerror
+                    });
+                    await encoder.configure(msg.config);
+                }
+
+                const reader = msg.readable.getReader();
+                let last_key_frame = -1;
+                let frame_count = 0;
+
+                while (true) {
+                    const result = await reader.read();
+                    if (result.done) {
+                        if (encoder) {
+                            await encoder.flush();
+                        }
+                        self.postMessage({ type: 'exit' });
+                        break;
+                    }
+                    //if msg.audio is true then ,msg.video is false
+                    if (msg.audio) {
+                        if (encoder) {
+                            encoder.encode(result.value);
+                        } else if (result.value.format !== 'f32-planar') {
+                            throw new Error(`unexpected audio format: ${result.value.format}`);
+                        } else {
+                            // Convert from planar to interleaved
+                            const nc = result.value.numberOfChannels;
+                            let total_size = 0;
+                            const bufs = [];
+                            for (let i = 0; i < nc; ++i) {
+                                const options = { planeIndex: i };
+                                const size = result.value.allocationSize(options);
+                                total_size += size;
+                                const buf = new ArrayBuffer(size);
+                                result.value.copyTo(buf, options);
+                                bufs.push(buf);
+                            }
+                            const data = new ArrayBuffer(total_size);
+                            const buf = new Uint8Array(data);
+                            for (let i = 0; i < total_size; i += 4) {
+                                const d = i / 4;
+                                buf.set(new Uint8Array(bufs[Math.floor(d) % nc], Math.floor(d / nc) * 4, 4), i);
+                            }
+                            self.postMessage({
+                                type,
+                                timestamp: result.value.timestamp,
+                                duration: result.value.duration,
+                                is_key: true,
+                                data
+                            }, [data]);
+                        }
+                    } else {
+                        let keyFrame = false;
+                        if (key_frame_interval > 0) {
+                            if (msg.count_frames) {
+                                keyFrame = frame_count++ % (msg.config.framerate * key_frame_interval) == 0;
+                            } else if ((last_key_frame < 0) ||
+                                       ((result.value.timestamp - last_key_frame) > key_frame_interval)) {
+                                keyFrame = true;
+                                last_key_frame = result.value.timestamp;
+                            }
+                        }
+                        encoder.encode(result.value, { keyFrame });
+                    }
+                    result.value.close();
+                }
+            } catch (ex) {
+                onerror(ex);
+            }
+
+            break;
+    }
+};
